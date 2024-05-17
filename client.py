@@ -19,7 +19,7 @@ def listen_server(client):
 
 def send_msg(client):
     while True:
-        msg = input("You: ") 
+        msg = input("") 
         if msg != '':
             client.sendall(msg.encode())
         else:

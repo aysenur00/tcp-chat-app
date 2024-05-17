@@ -5,8 +5,48 @@ HOST = '127.0.0.1'
 PORT = 1234
 clients = []
 messages = []
+groups = {}
+
+# print group
+def print_groups():
+    print("Groups:")
+    for group_name, members in groups.items():
+        print(f"- {group_name}: {', '.join(members)}")
+
+# create a group
+def create_group(group_name, username):
+    if group_name not in groups:
+        groups[group_name] = {username}
+        print_groups()
+        return True
+    else:
+        print(f"Group '{group_name}' already exists.")
+        return False
+
+# add person to group 
+def add_to_group(group_name, username):
+    if group_name in groups:
+        groups[group_name].add(username)
+        print_groups()
+        return True
+    else:
+        return False
+
+# send group message to a specific group
+def send_message_group(group_name, msg, username):
+    if group_name in groups:
+        sent = False
+        for client in clients:
+            if client[0] in groups[group_name]:
+                final_msg = username + '%' + msg
+                send_private_msg(final_msg, client[1])
+                sent = True
+        return sent
+    else:
+        return False
+            
 # send messages to all the people in the chat room
-def send_chat_room(msg):
+def send_message_all(msg):
     for client in clients:
         send_private_msg(msg, client[1])
 
@@ -25,7 +65,7 @@ def listen_port(client, username):
             else:
                 final_msg = username + '%' + msg
                 messages.append((username, msg))
-                send_chat_room(final_msg)
+                send_message_all(final_msg)
         else:
             print(f'The message sent from client {username} is empty')
 
@@ -39,6 +79,28 @@ def handle_command(client, username, command):
     
     if command.startswith('/history'):
         send_private_msg(f"INFO%Message history:\n{history()}", client)
+
+    if command.startswith('/creategroup'):
+        group_name = command.split(' ', 1)[1]
+        create_group(group_name, username)
+        client.sendall(f"INFO%Group '{group_name}' created successfully.".encode())
+    
+    if command.startswith('/joingroup'):
+        group_name = command.split(' ', 1)[1]
+        if add_to_group(group_name, username):
+            client.sendall(f"INFO%You joined group '{group_name}' successfully.".encode())
+        else:
+            client.sendall(f"INFO%Group '{group_name}' does not exist.".encode())
+        
+
+    if command.startswith('/sendgroup'):
+        group_name = command.split(' ', 2)[1]
+        msg = command.split(' ', 2)[2]
+        send_status = send_message_group(group_name, msg, username)
+        if send_status:
+            print(f"Message sent to group '{group_name}'")
+        else:
+            print(f"Group '{group_name}' does not exist.")
 
 # get all messages
 def history():
@@ -58,7 +120,7 @@ def client_handler(client):
         username = client.recv(2048).decode('utf-8')
         if username != '':
             clients.append((username, client))
-            send_chat_room(f"\nINFO%{username} entered chat room")
+            send_message_all(f"\nINFO%{username} entered chat room")
             break
         else:
             print("No user connected.")
