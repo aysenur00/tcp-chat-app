@@ -16,9 +16,10 @@ def listen_server(client):
         else:
             print(f'The message received is empty')
 
+
 def send_msg(client):
     while True:
-        msg = input("Enter your message: ") 
+        msg = input("You: ") 
         if msg != '':
             client.sendall(msg.encode())
         else:
