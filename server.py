@@ -4,8 +4,22 @@ import threading
 HOST = '127.0.0.1'
 PORT = 1234
 clients = []
-messages = []
+# Gelen mesajların kullanıcı bazında kaydı tutulur. 
+# /history komutu ile geçmiş mesaj bilgilerine erişilebilir.
+messages = [] 
 groups = {}
+
+# NOT: Server'a bağlantı kurulduktan sonra mesaj göndermek için herhangi bir prompt çıkmaz.
+# Bu gelen mesajlar ile gönderilecek mesajın karışmaması içindir.
+# Gönderilecek mesaj direkt yazılır.
+# Bir komut kullanılmadan yazılan mesajlar herkese gönderilir.
+# Bir komut yazılmışsa komuta göre işlem yapılır.
+# Komutlar:
+# /creategroup <group_name> 
+# /joingroup <group_name>
+# /sendgroup <group_name> <message>
+# /history
+# /search <keyword>
 
 # print group
 def print_groups():
@@ -13,7 +27,9 @@ def print_groups():
     for group_name, members in groups.items():
         print(f"- {group_name}: {', '.join(members)}")
 
-# create a group
+# Kullanıcılar bağlantıları ile grup kurabilir. 
+# Grubu oluşturan kişi gruba otomatik olarak katılır.
+# /creategroup <group_name> 
 def create_group(group_name, username):
     if group_name not in groups:
         groups[group_name] = {username}
@@ -23,7 +39,8 @@ def create_group(group_name, username):
         print(f"Group '{group_name}' already exists.")
         return False
 
-# add person to group 
+# Bir gruba katılmak isteyen kullanıcı /joingroup komutunu kullanır.
+# /joingroup <group_name>
 def add_to_group(group_name, username):
     if group_name in groups:
         groups[group_name].add(username)
@@ -32,7 +49,9 @@ def add_to_group(group_name, username):
     else:
         return False
 
-# send group message to a specific group
+# Sadece bir gruba mesaj göndermek için /sendgroup komutu ile grup ismi ve mesaj girilir.
+# /sendgroup <group_name> <message>
+# örnek: /sendgroup sınıf selam herkese
 def send_message_group(group_name, msg, username):
     if group_name in groups:
         sent = False
@@ -45,7 +64,8 @@ def send_message_group(group_name, msg, username):
     else:
         return False
             
-# send messages to all the people in the chat room
+# Herkese mesaj göndermek için kullanılan fonksiyon. 
+# /sendgroup komutu belirtilmedikçe mesajlar herkese gönderilir.
 def send_message_all(msg):
     for client in clients:
         send_private_msg(msg, client[1])
@@ -53,6 +73,15 @@ def send_message_all(msg):
 # send private message
 def send_private_msg(msg, client):
     client.sendall(msg.encode())
+
+# /history komutu ile geçmiş mesaj bilgilerine erişilebilir.
+def history():
+    return '\n'.join([f"{username}: {msg}" for username, msg in messages])
+
+# /search <keyword> komutu ile geçmiş mesajlar üzerinde anahtar kelimeyle arama yapılabilir.
+def search_messages(keyword):
+    results = [f"{username}: {msg}" for username, msg in messages if keyword in msg]
+    return '\n'.join(results) if results else "No messages found."
 
 # listen for messages to come
 def listen_port(client, username):
@@ -71,7 +100,7 @@ def listen_port(client, username):
 
 # handle client commands
 def handle_command(client, username, command):
-    if command.startswith('/search '):
+    if command.startswith('/search'):
         # split only once with maxsplit param 1
         keyword = command.split(' ', 1)[1]
         results = search_messages(keyword)
@@ -92,7 +121,6 @@ def handle_command(client, username, command):
         else:
             client.sendall(f"INFO%Group '{group_name}' does not exist.".encode())
         
-
     if command.startswith('/sendgroup'):
         group_name = command.split(' ', 2)[1]
         msg = command.split(' ', 2)[2]
@@ -101,16 +129,6 @@ def handle_command(client, username, command):
             print(f"Message sent to group '{group_name}'")
         else:
             print(f"Group '{group_name}' does not exist.")
-
-# get all messages
-def history():
-    return '\n'.join([f"{username}: {msg}" for username, msg in messages])
-
-# search keyword
-def search_messages(keyword):
-    results = [f"{username}: {msg}" for username, msg in messages if keyword in msg]
-    return '\n'.join(results) if results else "No messages found."
-
 
 # function for handling clients
 def client_handler(client):
